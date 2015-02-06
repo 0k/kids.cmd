@@ -1,0 +1,13 @@
+
+
+- catch all exception by default and try to make a nice error message.
+- have a [--debug|-d] and a [--verbose|-v] for all application by default.
+  - debug would allow display of full traceback and set the errorlevel to debug
+    - when catching an exception on NON debug mode, perhaps suggest to retry with --debug
+  - verbose would allow display of information log
+
+- for advanced usage, we could have a class descriptor for having
+  argument validation or transformation for each arguments.
+
+- the link between command line argument and config file should also
+  be straightforward by default and configurable if wanted.
