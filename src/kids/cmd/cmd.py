@@ -252,7 +252,7 @@ from codecs import getwriter, StreamWriter, lookup
 Writer = getwriter(locale.getpreferredencoding())
 writer = Writer(sys.stdout)
 
-sys.stdout = writer   ## Breaks pdb on python 2
+sys.stdout = writer   ## Breaks pdb readline capabilities on python 2
 sys.stdout.errors = "replace"
 
 
