@@ -255,7 +255,7 @@ sys.stdout = writer   ## Breaks pdb readline capabilities on python 2
 sys.stdout.errors = "replace"
 
 
-def expand_args_and_call(acallable, arguments):
+def get_calling_prototype(acallable):
     assert callable(acallable)
     if inspect.ismethod(acallable) or inspect.isfunction(acallable):
         args, vargs, vkwargs, defaults = inspect.getargspec(acallable)
@@ -275,6 +275,11 @@ def expand_args_and_call(acallable, arguments):
     if hasattr(acallable, "im_self"):  ## bound
         args = args[1:]
 
+    return args, defaults
+
+
+def match_prototype(acallable, arguments):
+    args, defaults = get_calling_prototype(acallable)
     defaults = [] if defaults is None else defaults
     p = []
     kw = {}
@@ -319,7 +324,7 @@ def expand_args_and_call(acallable, arguments):
             if val is not None:
                 ## we should only have strings if it was set.
                 kw[arg] = val
-    return acallable(*p, **kw)
+    return p, kw
 
 
 def manage_std_options(arguments, doc, version=None):
@@ -435,7 +440,8 @@ def run(obj=None, arguments=None):
 
         env = subcmd_env(env, action)
         args["__env__"] = env
-        exit(expand_args_and_call(subcmd, args))
+        p, kw = match_prototype(subcmd, args)
+        exit(subcmd(*p, **kw))
 
     msg.err("Action '%s' does not exists." % action)
     print("Use `%(surcmd)s --help` to get full help." % env)
