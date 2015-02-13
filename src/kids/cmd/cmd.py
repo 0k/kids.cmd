@@ -26,6 +26,8 @@ import kids.txt as txt
 import kids.file as kf
 from kids.ansi import aformat
 
+PY3 = sys.version_info >= (3, 0)
+
 
 def cmd(f):
     """Decorator to declare class method as a command"""
@@ -255,7 +257,70 @@ sys.stdout = writer   ## Breaks pdb readline capabilities on python 2
 sys.stdout.errors = "replace"
 
 
+def is_bound(method):
+    """Return if method is bound or not.
+
+        >>> class A(object):
+        ...     def m1(self, a, b, c=None): pass
+        >>> is_bound(A.m1)
+        False
+        >>> is_bound(A().m1)
+        True
+
+    Note that it should work with python callable and return
+    False also:
+
+        >>> is_bound(lambda: None)
+        False
+
+    """
+    if PY3:
+        return hasattr(method, '__self__')
+    return getattr(method, "im_self", None) is not None
+
+
 def get_calling_prototype(acallable):
+    """Returns actual working calling prototype
+
+    This means that the prototype given can be used directly
+    in the same way by bound method, method, function, lambda::
+
+        >>> def f1(a, b, c=1): pass
+        >>> get_calling_prototype(f1)
+        (['a', 'b', 'c'], (1,))
+        >>> get_calling_prototype(lambda a, b: None)
+        (['a', 'b'], ())
+        >>> get_calling_prototype(lambda a=None: None)
+        (['a'], (None,))
+        >>> get_calling_prototype(lambda : None)
+        ([], ())
+        >>> class A(object):
+        ...     def m1(self, a, b, c=None): pass
+        ...     @classmethod
+        ...     def cm(cls, a, b, c=None): pass
+        ...     @staticmethod
+        ...     def st(a, b, c=None): pass
+        ...     def __call__(self, a, b, c=None): pass
+
+        >>> get_calling_prototype(A.m1)
+        (['self', 'a', 'b', 'c'], (None,))
+        >>> A.m1(A(), 1, 2, 3)
+        >>> get_calling_prototype(A().m1)
+        (['a', 'b', 'c'], (None,))
+        >>> get_calling_prototype(A.cm)
+        (['a', 'b', 'c'], (None,))
+        >>> get_calling_prototype(A().cm)
+        (['a', 'b', 'c'], (None,))
+        >>> get_calling_prototype(A.st)
+        (['a', 'b', 'c'], (None,))
+        >>> get_calling_prototype(A().st)
+        (['a', 'b', 'c'], (None,))
+        >>> get_calling_prototype(A())
+        (['a', 'b', 'c'], (None,))
+
+
+
+    """
     assert callable(acallable)
     if inspect.ismethod(acallable) or inspect.isfunction(acallable):
         args, vargs, vkwargs, defaults = inspect.getargspec(acallable)
@@ -272,14 +337,42 @@ def get_calling_prototype(acallable):
     if vargs or vkwargs:
         raise SyntaxError("variable *arg or **kwarg are not supported.")
 
-    if hasattr(acallable, "im_self"):  ## bound
+    if is_bound(acallable):
         args = args[1:]
+
+    if defaults is None:
+        defaults = ()  ## be coherent
 
     return args, defaults
 
 
 def match_prototype(acallable, arguments):
+    """Return tuple (pos args, kwargs) to call given callable
+
+    Let's define a callable that will printout
+
+    >>> arguments = {'alphonse': 1, 'bertrand': 2, 'charlie': 3}
+
+    >>> match_prototype(lambda arguments: None, arguments)
+    ([{'bertrand': 2, 'charlie': 3, 'alphonse': 1}], {})
+    >>> match_prototype(lambda args: None, arguments)
+    ([{'bertrand': 2, 'charlie': 3, 'alphonse': 1}], {})
+
+
+    >>> match_prototype(lambda bertrand, arguments: None, arguments)
+    ([2, {'charlie': 3, 'alphonse': 1}], {})
+
+    >>> match_prototype(lambda bertrand, arguments, foo=None: None, arguments)
+    ([2, {'charlie': 3, 'alphonse': 1}], {})
+
+    >>> match_prototype(lambda bertrand, arguments, charlie=None: None,
+    ...                 arguments)
+    ([2, {'alphonse': 1}], {'charlie': 3})
+
+    """
+
     args, defaults = get_calling_prototype(acallable)
+    arguments = arguments.copy()
     defaults = [] if defaults is None else defaults
     p = []
     kw = {}
@@ -315,6 +408,8 @@ def match_prototype(acallable, arguments):
                         "Can't match your function argument %r with command line "
                         "keys (%s)."
                         % (arg, ", ".join(arguments.keys())))
+                else:
+                    k = None
             if k is not None:
                 ## inplace removal is important here
                 val = arguments.pop(k) 
