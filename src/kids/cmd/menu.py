@@ -8,7 +8,7 @@ from kids import ansi
 def line(line_def, **kwargs):
     """Highlights a character in the line"""
     def replace(s):
-        return "(%s)" % ansi.attr.bold(s.group()[1:])
+        return "(%s)" % ansi.aformat(s.group()[1:], attrs=["bold", ])
     return ansi.aformat(
         re.sub('@.?', replace, line_def),
         **kwargs)
