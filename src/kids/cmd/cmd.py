@@ -405,14 +405,14 @@ def match_prototype(acallable, arguments):
             else:
                 if not has_args:
                     raise SyntaxError(
-                        "Can't match your function argument %r with command line "
-                        "keys (%s)."
+                        "Can't match your function argument %r with "
+                        "command line keys (%s)."
                         % (arg, ", ".join(arguments.keys())))
                 else:
                     k = None
             if k is not None:
                 ## inplace removal is important here
-                val = arguments.pop(k) 
+                val = arguments.pop(k)
         if is_pos:
             p.append(val)
         else:
