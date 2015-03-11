@@ -24,6 +24,7 @@ import kids.cfg as cfg
 import kids.data as data
 import kids.txt as txt
 import kids.file as kf
+from kids.common.exc import format_last_exception
 from kids.ansi import aformat
 
 PY3 = sys.version_info >= (3, 0)
@@ -453,6 +454,11 @@ def register():
         obj.run = lambda: exit(run(obj))
 
 
+def is_debug_mode(args):
+    return args.get("--debug", False) or \
+           os.environ.get("%s_DEBUG" % args["__env__"]["name"].upper(), False)
+
+
 def run(obj=None, arguments=None):
     if obj is None:
         try:
@@ -498,46 +504,60 @@ def run(obj=None, arguments=None):
     assert "ACTION" in arguments
     action = arguments["ACTION"]
 
-    if action in subcmds:
-        subcmd = subcmds[action]
-        ## XXXvlab: this would be nice if only one doc would have worked,
-        ## it might be possible but didn't have much time to dig
-        docopt_doc = get_help_subcmd(action, subcmd, env, only_sub=True)
-        real_doc = get_help_subcmd(action, subcmd, env)
+    if action not in subcmds:
+        msg.err("Action '%s' does not exists." % action)
+        print("Use `%(surcmd)s --help` to get full help." % env)
+        exit(1)
 
-        options_first = True if get_subcmds(subcmd) else False
-        try:
-            args = docopt(docopt_doc, argv=arguments["ARGS"], help=False,
-                          version=getattr(subcmd, '__version__', False),
-                          options_first=options_first)
-        except DocoptLanguageError as e:
-            msg.die("Doc syntax error %s, please check:\n%s"
-                    % (e.message, real_doc))
-            exit(1)
-        except DocoptExit:
-            ## XXXvlab: hum we can't give the correct doc and have to
-            ## do bad things to make it work. So I have to substitute
-            ## the help printing message.
-            msg.err("Invalid command line for command '%s %s'"
-                    % (env["surcmd"], action))
-            print(get_help_subcmd(action, subcmd, env))
-            exit(1)
-            # print(docopt_doc)
-            # from  pprint import pprint
-            # pprint(arguments["ARGS"])
-            # import pdb; pdb.set_trace()
-            # args = docopt(docopt_doc, argv=arguments["ARGS"], help=False,
-            #               version=getattr(subcmd, '__version__', False),
-            #               options_first=options_first)
-            # exit(0)
+    subcmd = subcmds[action]
+    ## XXXvlab: this would be nice if only one doc would have worked,
+    ## it might be possible but didn't have much time to dig
+    docopt_doc = get_help_subcmd(action, subcmd, env, only_sub=True)
+    real_doc = get_help_subcmd(action, subcmd, env)
 
-        manage_std_options(args, real_doc)
+    options_first = True if get_subcmds(subcmd) else False
+    try:
+        args = docopt(docopt_doc, argv=arguments["ARGS"], help=False,
+                      version=getattr(subcmd, '__version__', False),
+                      options_first=options_first)
+    except DocoptLanguageError as e:
+        msg.die("Doc syntax error %s, please check:\n%s"
+                % (e.message, real_doc))
+        exit(1)
+    except DocoptExit:
+        ## XXXvlab: hum we can't give the correct doc and have to
+        ## do bad things to make it work. So I have to substitute
+        ## the help printing message.
+        msg.err("Invalid command line for command '%s %s'"
+                % (env["surcmd"], action))
+        print(get_help_subcmd(action, subcmd, env))
+        exit(1)
 
-        env = subcmd_env(env, action)
-        args["__env__"] = env
-        p, kw = match_prototype(subcmd, args)
-        exit(subcmd(*p, **kw))
+    manage_std_options(args, real_doc)
 
-    msg.err("Action '%s' does not exists." % action)
-    print("Use `%(surcmd)s --help` to get full help." % env)
-    exit(1)
+    env = subcmd_env(env, action)
+    args["__env__"] = env
+    p, kw = match_prototype(subcmd, args)
+    try:
+        ret = subcmd(*p, **kw)
+    except KeyboardInterrupt:
+        if is_debug_mode(args):
+            msg.err("Keyboard interrupt received while running '%s':"
+                    % (env["surcmd"], ))
+            print(format_last_exception(
+                prefix=aformat(" | ", fg="black", attrs=["bold", ])))
+        else:
+            print()
+            msg.err("Keyboard Interrupt. Bailing out.")
+        exit(254)
+    except Exception as e:  ## pylint: disable=broad-except
+        if is_debug_mode(args):
+            msg.err("Exception while running '%s':"
+                    % (env["surcmd"], ))
+            print(format_last_exception(
+                prefix=aformat(" | ", fg="black", attrs=["bold", ])))
+        else:
+            message = "%s" % e
+            msg.err(message)
+        exit(255)
+    exit(ret)
