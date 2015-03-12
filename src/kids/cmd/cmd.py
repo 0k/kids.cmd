@@ -481,7 +481,8 @@ def run(obj=None, arguments=None):
     subcmds = get_subcmds(obj)
     if arguments is None:
         exname = kf.basename(sys.argv[0])
-        env = {"surcmd": exname}
+        name = kf.basename(exname, ['.py', '.pyc'])
+        env = {"exname": exname, "name": name, "surcmd": exname}
     else:
         env = arguments["__env__"]
 
