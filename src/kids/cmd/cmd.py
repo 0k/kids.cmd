@@ -20,7 +20,7 @@ from docopt import docopt, DocoptExit, DocoptLanguageError
 from . import msg
 
 from kids.cache import cache
-import kids.cfg as cfg
+import kids.cfg
 import kids.data as data
 import kids.txt as txt
 import kids.file as kf
@@ -47,8 +47,16 @@ class BaseCommand(object):
 
     @property
     @cache
-    def cfg(self):
-        return cfg.load(kf.basename(sys.argv[0], ".py"), {})
+    def local_path(self):
+        return False
+
+    @cache
+    @property
+    def cfg(self):  ## shortcut
+        if self.local_path:
+            return kids.cfg.load(local_path=self.local_path)
+        else:
+            return kids.cfg.load()
 
     def __call__(self, arguments):
         return run(self, arguments)
