@@ -459,16 +459,23 @@ def manage_std_options(arguments, doc, version=None):
         arguments.pop('--version')
 
 
-def register():
+def get_stack_module(level=1):
     try:
         ## Get callers module
-        frm = inspect.stack()[1]
+        frm = inspect.stack()[1 + level]
         frame, _, _, _, _, _ = frm
         obj = inspect.getmodule(frame)
+        if obj is None:
+            obj = sys.modules[frame.f_globals["__name__"]]
     except:
         raise SyntaxError(
             "Couldn't infer caller's module. "
             "Please provide a compatible object as command.")
+    return obj
+
+
+def register():
+    obj = get_stack_module()
     if obj.__name__ == "__main__":
         exit(run(obj))
     else:
@@ -482,15 +489,7 @@ def is_debug_mode(args):
 
 def run(obj=None, arguments=None):
     if obj is None:
-        try:
-            ## Get callers module
-            frm = inspect.stack()[1]
-            frame, _, _, _, _, _ = frm
-            obj = inspect.getmodule(frame)
-        except:
-            raise SyntaxError(
-                "Couldn't infer caller's module. "
-                "Please provide a compatible object as command.")
+        obj = get_stack_module()
     subcmds = get_subcmds(obj)
     if arguments is None:
         exname = kf.basename(sys.argv[0])
