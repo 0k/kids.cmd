@@ -92,6 +92,24 @@ def get_obj_subcmds(obj):
     return OrderedDict(subcmds)
 
 
+def get_module_resources(mod):
+    """Return probed sub module names from given module"""
+
+    path = os.path.dirname(os.path.realpath(mod.__file__))
+    prefix = kf.basename(mod.__file__, (".py", ".pyc"))
+
+    if not os.path.exists(mod.__file__):
+        import pkg_resources
+        for resource_name in pkg_resources.resource_listdir(mod.__name__, ''):
+            if resource_name.startswith("%s_" % prefix) and resource_name.endswith(".py"):
+                module_name, _ext = os.path.splitext(kf.basename(resource_name))
+                yield module_name
+
+    for f in glob.glob(os.path.join(path, '%s_*.py' % prefix)):
+        module_name, _ext = os.path.splitext(kf.basename(f))
+        yield module_name
+
+
 def get_mod_subcmds(mod):
     """Fetch action in same directory in python module
 
@@ -103,17 +121,12 @@ def get_mod_subcmds(mod):
 
     subcmds = get_obj_subcmds(mod)
 
-    ##
-
     path = os.path.dirname(os.path.realpath(mod.__file__))
-    prefix = kf.basename(mod.__file__, (".py", ".pyc"))
-
     if mod.__package__ is None:
         sys.path.insert(0, os.path.dirname(path))
         mod.__package__ = kf.basename(path)
 
-    for f in glob.glob(os.path.join(path, '%s_*.py' % prefix)):
-        module_name, _ext = os.path.splitext(kf.basename(f))
+    for module_name in get_module_resources(mod):
         try:
             mod = importlib.import_module(".%s" % module_name, mod.__package__)
         except ImportError as e:
