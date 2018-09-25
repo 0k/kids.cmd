@@ -6,10 +6,6 @@ kids.cmd
    :target: https://pypi.python.org/pypi/kids.cmd/
    :alt: Latest PyPI version
 
-.. image:: http://img.shields.io/pypi/dm/kids.cmd.svg?style=flat
-   :target: https://pypi.python.org/pypi/kids.cmd/
-   :alt: Number of PyPI downloads
-
 .. image:: http://img.shields.io/travis/0k/kids.cmd/master.svg?style=flat
    :target: https://travis-ci.org/0k/kids.cmd/
    :alt: Travis CI build status
@@ -128,7 +124,7 @@ would show you how to deal with your issue.
 License
 =======
 
-Copyright (c) 2015 Valentin Lab.
+Copyright (c) 2018 Valentin Lab.
 
 Licensed under the `BSD License`_.
 
