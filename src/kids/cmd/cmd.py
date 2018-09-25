@@ -255,8 +255,6 @@ def get_help(obj, env, subcmds):
             "Documentation of %s is not valid. Please check it:\n%s"
             % (aformat(env["surcmd"], attrs=["bold", ]),
                doc))
-        import traceback
-        import pdb; pdb.set_trace()
         exit(1)
     return output
 
