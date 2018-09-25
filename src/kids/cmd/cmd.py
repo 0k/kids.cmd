@@ -13,6 +13,8 @@ import glob
 import importlib
 import inspect
 import re
+import logging
+
 from collections import OrderedDict
 
 from docopt import docopt, DocoptExit, DocoptLanguageError
@@ -28,6 +30,7 @@ from kids.common.exc import format_last_exception
 from kids.ansi import aformat
 
 PY3 = sys.version_info >= (3, 0)
+LOGGER = None
 
 
 def cmd(f):
@@ -486,6 +489,8 @@ def is_debug_mode(args):
 
 
 def run(obj=None, arguments=None):
+    global LOGGER
+
     if obj is None:
         obj = get_stack_module()
     subcmds = get_subcmds(obj)
@@ -557,6 +562,28 @@ def run(obj=None, arguments=None):
     env = subcmd_env(env, action)
     args["__env__"] = env
     p, kw = match_prototype(subcmd, args)
+    debug_mode = os.environ.get("%s_DEBUG" % args["__env__"]["name"].upper(), False)
+    if debug_mode is not False and not LOGGER:
+        logger = logging.getLogger('')
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.DEBUG)
+        # add formatter to ch
+        formatter = logging.Formatter('%(asctime)s %(levelname)-5s [%(name)s] %(message)s')
+        ch.setFormatter(formatter)
+        # add ch to logger
+        logger.addHandler(ch)
+
+        if ":" in debug_mode:
+            ## at least one statement
+            for statement in debug_mode.split(","):
+                if ":" not in statement:
+                    msg.err("Invalid debug string.")
+                    exit(253)
+                logger, level = statement.rsplit(":", 1)
+                logging.getLogger(logger).setLevel(getattr(logging, level))
+        else:
+            logger.setLevel(logging.DEBUG)
+        LOGGER = True
     try:
         ret = subcmd(*p, **kw)
     except KeyboardInterrupt:
