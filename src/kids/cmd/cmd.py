@@ -514,7 +514,7 @@ def run(obj=None, arguments=None):
 
     manage_std_options(arguments, doc)
 
-    if arguments["help"]:
+    if arguments.get("help"):
         command = arguments["COMMAND"]
         if command is None:
             print(doc)
