@@ -344,14 +344,14 @@ def get_calling_prototype(acallable):
 
 
     """
-    assert callable(acallable)
     if inspect.ismethod(acallable) or inspect.isfunction(acallable):
         args, vargs, vkwargs, defaults = inspect.getargspec(acallable)
     elif not inspect.isfunction(acallable) and hasattr(acallable, "__call__"):
         ## a class instance ? which is callable...
         args, vargs, vkwargs, defaults = inspect.getargspec(acallable.__call__)
         ## remove the 'self' argument
-        args = args[1:]
+        if is_bound(acallable.__call__):
+            args = args[1:]
     else:
         raise ValueError("Hum, %r is a callable, but not a function/method, "
                          "nor a instance with __call__ arg..."
@@ -488,6 +488,23 @@ def is_debug_mode(args):
            os.environ.get("%s_DEBUG" % args["__env__"]["name"].upper(), False)
 
 
+def get_callable(obj):
+    if inspect.ismethod(obj) or inspect.isfunction(obj):
+        return obj
+    elif not inspect.isfunction(obj) and hasattr(obj, "__call__"):
+        return obj.__call__
+    else:
+        raise ValueError("Hum, %r is a callable, but not a function/method, "
+                         "nor a instance with __call__ arg..."
+                         % obj)
+
+
+def call(obj, p, kw):
+    """args were checked, obj needs to be run"""
+    acallable = get_callable(obj)
+    return acallable(*p, **kw)
+
+
 def run(obj=None, arguments=None):
     global LOGGER
 
@@ -524,6 +541,11 @@ def run(obj=None, arguments=None):
                 exit(1)
             print(get_help_subcmd(command, subcmds[command], env))
         exit(0)
+
+    if is_cmd(obj):
+        p, kw = match_prototype(obj, arguments)
+        ret = call(obj, p, kw)
+        exit(ret)
 
     assert "ACTION" in arguments
     action = arguments["ACTION"]
